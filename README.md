@@ -14,7 +14,7 @@
 | Feature | Details |
 |---|---|
 | 🤖 **AI-powered chat** | Conversational Q&A backed by `gemini-3.6-flash` via the Agno agent framework |
-| 🔗 **MCP filesystem** | Agent reads your file through the official `@modelcontextprotocol/server-filesystem` stdio server |
+| 🔗 **MCP filesystem** | Agent reads your file through `@modelcontextprotocol/server-filesystem`; gracefully falls back if Node.js is unavailable |
 | 📄 **PDF text extraction** | Uses `pypdf` to extract real text from PDFs (not raw bytes) before sending to the model |
 | 📁 **Broad file support** | `.txt` · `.pdf` · `.md` · `.csv` · `.json` · `.yaml` · `.yml` · `.docx` |
 | 🔑 **Smart key management** | Uses your `.env` key by default; prompts for a personal key if quota is hit |
@@ -29,15 +29,15 @@
 ### Prerequisites
 
 - Python 3.11+
-- Node.js 18+ (for `npx` — used to launch the MCP filesystem server)
+- Node.js 18+ *(optional — app works without it, see [Architecture](#️-architecture) below)*
 - A free [Google AI Studio API key](https://aistudio.google.com)
 
 ### Installation
 
 ```bash
 # 1. Clone the repo
-git clone https://github.com/your-username/doc-agent.git
-cd doc-agent
+git clone https://github.com/annshita/DocuAgent.git
+cd DocuAgent
 
 # 2. Create and activate a virtual environment
 python -m venv venv
@@ -80,6 +80,8 @@ If the key is set, the sidebar shows **"Built-in key active"**. If the free-tier
 
 ## 🏗️ Architecture
 
+### Agent execution flow
+
 ```
 User browser
     │  HTTP
@@ -92,16 +94,24 @@ Streamlit UI  (main.py)
     │
     └─ asyncio.run( run_mcp_agent() )
             │
-            ▼
-       Agno Agent  ──  gemini-3.6-flash
-            │  MCP stdio
-            ▼
-       @modelcontextprotocol/server-filesystem
-            │
-            └──▶  temp_dir / uploaded_file
+            ├── npx found on PATH?
+            │       │
+            │      YES → MCP stdio server → Agent WITH read_file tool
+            │       │
+            │      NO / connection fails
+            │           ↓
+            └──────── Agent WITHOUT tools
+                      (file content already in system prompt — works fine)
 ```
 
-**Token-budget strategy:** The file text is pre-loaded and injected directly into the system prompt (capped at 120,000 chars ≈ 30,000 tokens) before the agent runs. This avoids an extra MCP `read_file` round-trip and keeps requests under the free-tier 250,000 input-token-per-minute limit.
+### Token-budget strategy
+
+The file text is pre-loaded locally and injected directly into the system prompt **(capped at 120,000 chars ≈ 30,000 tokens)** before the agent runs. This means:
+
+- No mandatory MCP round-trip — the agent can answer immediately from the prompt
+- Stays under the free-tier 250,000 input-token-per-minute limit
+- MCP `read_file` is a last-resort fallback only, not the primary path
+- The app works on platforms where `npx` / Node.js is unavailable
 
 ---
 
@@ -123,20 +133,23 @@ Streamlit UI  (main.py)
    ```toml
    GOOGLE_API_KEY = "your_key_here"
    ```
-5. Click **Deploy** — Node.js is available on Streamlit Cloud by default
+5. Click **Deploy**
 
-> **Note:** The app auto-detects Windows vs Linux and uses `npx.cmd` or `npx` accordingly.
+> **Node.js:** `packages.txt` instructs Streamlit Cloud to install `nodejs` and `npm`. If the MCP server still can't start, the app automatically falls back to running the agent without tools — so it works either way.
+
+> **OS detection:** The app auto-selects `npx.cmd` (Windows) or `npx` (Linux/macOS) at runtime.
 
 ---
 
 ## 📂 Project Structure
 
 ```
-doc-agent/
+DocuAgent/
 ├── main.py           # Streamlit app + Agno MCP agent logic
 ├── styles.css        # Custom pink/rose theme
 ├── requirements.txt  # pip dependencies
 ├── pyproject.toml    # Project metadata
+├── packages.txt      # System packages for Streamlit Cloud (nodejs, npm)
 ├── .env.example      # API key template
 └── .gitignore
 ```
@@ -155,4 +168,4 @@ doc-agent/
 
 ## 🪪 License
 
-MIT — see [LICENSE](LICENSE) for details.
+MIT
