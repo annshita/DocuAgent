@@ -201,9 +201,22 @@ p, span, label, div {
     box-shadow: 0 0 0 3px rgba(194,24,91,0.12) !important;
 }
 
-.stChatInput textarea {
+/* Chat input textarea — text, caret and placeholder */
+.stChatInput textarea,
+[data-testid="stChatInput"] textarea,
+[data-testid="stChatInputTextArea"],
+[data-testid="stChatInputTextArea"] textarea {
     color: var(--text-main) !important;
+    caret-color: var(--primary) !important;
     font-family: 'Nunito', sans-serif !important;
+    background-color: var(--bg-surface) !important;
+}
+
+.stChatInput textarea::placeholder,
+[data-testid="stChatInput"] textarea::placeholder,
+[data-testid="stChatInputTextArea"]::placeholder {
+    color: var(--text-muted) !important;
+    opacity: 1 !important;
 }
 
 /* ── Spinner ── */
