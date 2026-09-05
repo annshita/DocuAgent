@@ -258,15 +258,120 @@ async def run_mcp_agent(local_dir: str, query: str, api_key: str, filename: str 
                     "please be more specific or split the file."
                 )
 
-    env = os.environ.copy()
-    env.update({
-        "npm_config_update_notifier": "false",
-        "npm_config_loglevel": "error",
-    })
 
-    # Inject document content directly into instructions to avoid a redundant
-    # MCP round-trip AND to control exactly how many tokens are sent.
-    INSTRUCTIONS = dedent(f"""
+
+async def _execute_agent_logic(
+    query: str,
+    api_key: str,
+    instructions: str,
+    truncation_note: str,
+    tools: list | None = None,
+) -> tuple[str, bool]:
+    """
+    Core agent execution with retry logic.
+    Shared by both the MCP path (tools=[mcp_tools]) and the
+    no-MCP fallback path (tools=None / tools=[]).
+    """
+
+    def _make_agent(model_id: str) -> Agent:
+        kwargs = dict(
+            model=Gemini(id=model_id, api_key=api_key),
+            instructions=instructions,
+        )
+        if tools:
+            kwargs["tools"] = tools
+            kwargs["tool_call_limit"] = 1
+        return Agent(**kwargs)
+
+    async def _run_model(model_id: str) -> tuple[str | None, str, str]:
+        response = await _make_agent(model_id).arun(query)
+        if _is_error_response(response):
+            err_content = _get_content(response)
+            return None, _classify_error(err_content), err_content
+        content = _get_content(response)
+        return content or "(No text returned — try rephrasing your question.)", "", ""
+
+    async def _run_with_retry(model_id: str) -> tuple[str | None, str, str]:
+        content, err, raw = await _run_model(model_id)
+        if err == "rate_limit":
+            wait_s = _parse_retry_delay(raw)
+            logging.info("Rate limit hit — auto-retrying in %.0f s …", wait_s)
+            await asyncio.sleep(wait_s)
+            content, err, raw = await _run_model(model_id)
+        return content, err, raw
+
+    content, err, raw_err = await _run_with_retry(PRIMARY_MODEL)
+
+    if not err:
+        return (content or "") + truncation_note, False
+
+    if err == "rate_limit":
+        return (
+            "> ⏳ **Rate Limit Hit**  \n"
+            "> The API key hit its **per-minute token limit** (free tier).  \n"
+            "> The app already waited and retried once automatically.  \n"
+            "> **Please wait ~60 s and try again** — or enter your own "
+            "Google AI Studio key in the sidebar to bypass this limit."
+        ), True
+
+    if err == "quota":
+        return (
+            "> ⚠️ **Quota Exhausted**  \n"
+            "> The built-in API key has exhausted its daily/monthly quota. "
+            "Please enter your own Google AI Studio key in the sidebar."
+        ), True
+
+    if err == "overloaded":
+        fb_content, fb_err, _ = await _run_with_retry(FALLBACK_MODEL)
+        if not fb_err:
+            note = (
+                f"\n\n*(Note: Answer from fallback model "
+                f"`{FALLBACK_MODEL}` — primary model was overloaded)*"
+            )
+            return (fb_content or "") + note + truncation_note, False
+        if fb_err in ("quota", "rate_limit"):
+            return (
+                "> ⚠️ **Quota / Rate Limit**  \n"
+                "> The built-in API key has hit its limit. "
+                "Please enter your own Google AI Studio key in the sidebar."
+            ), True
+        return (
+            "> ⚠️ **High Demand**  \n"
+            "> Both models are overloaded. Please try again in a few seconds."
+        ), False
+
+    return "Agent error — please try again or enter your own API key.", False
+
+
+async def run_mcp_agent(local_dir: str, query: str, api_key: str, filename: str = "") -> tuple[str, bool]:
+    """
+    Run the document Q&A agent.
+
+    Primary path:  MCP stdio server via npx (gives agent a read_file fallback).
+    Fallback path: No MCP tools — works fine because file content is already
+                   injected into the system prompt, so npx is not required.
+                   This makes the app work on Streamlit Cloud even if Node.js
+                   is unavailable.
+    """
+    abs_dir = os.path.abspath(local_dir)
+    file_hint = f"/{filename}" if filename else ""
+
+    # Pre-load file content so we can cap token usage
+    file_content = ""
+    truncation_note = ""
+    if filename:
+        filepath = os.path.join(abs_dir, filename)
+        if os.path.isfile(filepath):
+            file_content, was_truncated = _get_safe_file_content(filepath)
+            if was_truncated:
+                truncation_note = (
+                    f"\n\n> **Note:** The document is large; showing the first "
+                    f"{MAX_CHARS_PER_REQUEST // 1000}K characters. "
+                    "If your question targets content later in the document, "
+                    "please be more specific or split the file."
+                )
+
+    instructions = dedent(f"""
         You are a precise document assistant.
         The user has uploaded a file. Its path on the MCP filesystem is: {file_hint}
 
@@ -285,123 +390,59 @@ async def run_mcp_agent(local_dir: str, query: str, api_key: str, filename: str 
           use the `read_file` tool ONCE to fetch the file.
     """)
 
-    # Only expose read_file — eliminates all directory-exploration round trips
-    ALLOWED_TOOLS = {"read_file"}
+    # ── Primary path: try to connect to the MCP filesystem server ────────────
+    npx_cmd = "npx.cmd" if sys.platform == "win32" else "npx"
 
-    # Hard cap on tool calls to stay within free-tier RPM limits
-    TOOL_CALL_LIMIT = 1  # one fallback read at most
+    # Quick check: is npx actually on PATH?
+    npx_available = shutil.which(npx_cmd) is not None
 
-    try:
-        npx_cmd = "npx.cmd" if sys.platform == "win32" else "npx"
+    if npx_available:
+        env = os.environ.copy()
+        env.update({
+            "npm_config_update_notifier": "false",
+            "npm_config_loglevel": "error",
+        })
         server_params = StdioServerParameters(
             command=npx_cmd,
             args=["-y", "--silent", "@modelcontextprotocol/server-filesystem", abs_dir],
             env=env,
         )
-
         try:
             async with stdio_client(server_params) as (read, write):
-                try:
-                    async with ClientSession(read, write) as session:
-                        mcp_tools = MCPTools(session=session)
-                        await mcp_tools.initialize()
+                async with ClientSession(read, write) as session:
+                    mcp_tools = MCPTools(session=session)
+                    await mcp_tools.initialize()
+                    # Restrict to read_file only
+                    mcp_tools.functions = {
+                        name: fn
+                        for name, fn in mcp_tools.functions.items()
+                        if name in {"read_file"}
+                    }
+                    return await _execute_agent_logic(
+                        query, api_key, instructions, truncation_note,
+                        tools=[mcp_tools],
+                    )
+        except Exception as mcp_err:
+            logging.warning(
+                "MCP connection failed (%s) — falling back to no-tools mode.", mcp_err
+            )
+            # Fall through to the no-tools path below
 
-                        mcp_tools.functions = {
-                            name: fn
-                            for name, fn in mcp_tools.functions.items()
-                            if name in ALLOWED_TOOLS
-                        }
-
-                        def _make_agent(model_id: str) -> Agent:
-                            return Agent(
-                                model=Gemini(id=model_id, api_key=api_key),
-                                tools=[mcp_tools],
-                                instructions=INSTRUCTIONS,
-                                tool_call_limit=TOOL_CALL_LIMIT,
-                            )
-
-                        async def _run_model(model_id: str) -> tuple[str | None, str, str]:
-                            """
-                            Run agent with model_id.
-                            Returns (content, err_class, raw_err_text).
-                            err_class == '' means success.
-                            """
-                            response = await _make_agent(model_id).arun(query)
-
-                            if _is_error_response(response):
-                                err_content = _get_content(response)
-                                return None, _classify_error(err_content), err_content
-
-                            content = _get_content(response)
-                            return content or "(No text returned — try rephrasing your question.)", "", ""
-
-                        async def _run_with_retry(model_id: str) -> tuple[str | None, str, str]:
-                            """
-                            Attempt _run_model; if we get rate_limit, wait the
-                            API-specified delay and retry once automatically.
-                            """
-                            content, err, raw = await _run_model(model_id)
-                            if err == "rate_limit":
-                                wait_s = _parse_retry_delay(raw)
-                                logging.info(
-                                    "Rate limit hit — auto-retrying in %.0f s …", wait_s
-                                )
-                                await asyncio.sleep(wait_s)
-                                content, err, raw = await _run_model(model_id)
-                            return content, err, raw
-
-                        # Primary model attempt (with one automatic retry)
-                        content, err, raw_err = await _run_with_retry(PRIMARY_MODEL)
-
-                        if not err:
-                            # Append truncation note if file was partially read
-                            return (content or "") + truncation_note, False
-
-                        if err == "rate_limit":
-                            return (
-                                "> ⏳ **Rate Limit Hit**  \n"
-                                "> The API key hit its **per-minute token limit** (free tier).  \n"
-                                "> The app already waited and retried once automatically.  \n"
-                                "> **Please wait ~60 s and try again** — or enter your own "
-                                "Google AI Studio key in the sidebar to bypass this limit."
-                            ), True
-
-                        if err == "quota":
-                            return (
-                                "> ⚠️ **Quota Exhausted**  \n"
-                                "> The built-in API key has exhausted its daily/monthly quota. "
-                                "Please enter your own Google AI Studio key in the sidebar."
-                            ), True
-
-                        if err == "overloaded":
-                            # Try fallback model (also with retry)
-                            fb_content, fb_err, _ = await _run_with_retry(FALLBACK_MODEL)
-                            if not fb_err:
-                                note = (
-                                    f"\n\n*(Note: Answer from fallback model "
-                                    f"`{FALLBACK_MODEL}` — primary model was overloaded)*"
-                                )
-                                return (fb_content or "") + note + truncation_note, False
-                            if fb_err in ("quota", "rate_limit"):
-                                return (
-                                    "> ⚠️ **Quota / Rate Limit**  \n"
-                                    "> The built-in API key has hit its limit. "
-                                    "Please enter your own Google AI Studio key in the sidebar."
-                                ), True
-                            return (
-                                "> ⚠️ **High Demand**  \n"
-                                "> Both models are overloaded. Please try again in a few seconds."
-                            ), False
-
-                        # Unknown error
-                        return "Agent error — please try again or enter your own API key.", False
-
-                except Exception as session_err:
-                    return f"Session error: {session_err}", False
-        except Exception as client_err:
-            return f"MCP connection error: {client_err}", False
-    except Exception as setup_err:
-        return f"Setup error: {setup_err}", False
+    # ── Fallback path: no MCP tools (content already in system prompt) ────────
+    logging.info(
+        "Running agent without MCP tools (npx %s).",
+        "not found" if not npx_available else "connection failed",
+    )
+    # Remove the read_file instruction since there are no tools available
+    instructions_no_tools = instructions.replace(
+        "- If and only if the pre-loaded content is insufficient or empty,\n"
+        "          use the `read_file` tool ONCE to fetch the file.",
+        "- If the pre-loaded content seems incomplete, let the user know and\n"
+        "          ask them to try a more specific question.",
+    )
+    return await _execute_agent_logic(
+        query, api_key, instructions_no_tools, truncation_note, tools=None
+    )
 
 
 # ---------------------------------------------------------------------------
