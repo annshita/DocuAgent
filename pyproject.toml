@@ -1,0 +1,16 @@
+[project]
+name = "doc-agent"
+version = "1.0.0"
+description = "Chat with any document using MCP + Gemini — a Streamlit AI agent"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "agno>=1.7.7",
+    "mcp>=1.12.3",
+    "streamlit>=1.47.1",
+    "google-genai",
+    "google-generativeai",
+    "openai>=1.98.0",
+    "python-dotenv",
+    "pypdf>=4.0.0",
+]

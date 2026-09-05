@@ -1,0 +1,8 @@
+agno>=1.7.7
+mcp>=1.12.3
+streamlit>=1.47.1
+google-generativeai
+google-genai
+openai>=1.98.0
+python-dotenv
+pypdf>=4.0.0
