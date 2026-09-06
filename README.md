@@ -1,4 +1,4 @@
-# 🎀 DocuAgent — Chat with Your Documents
+# 🎀 DocuAgent - Chat with Your Documents
 
 > Upload any document and have a conversation with it — powered by **MCP**, **Gemini**, and **Streamlit**.
 
