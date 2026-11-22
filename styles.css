@@ -1,65 +1,52 @@
 /* ============================================================
-   DocuAgent — Pink · Magenta · Soft Rose Theme
+   DocuAgent — Soft Rose on Warm Black (easy on the eyes)
    ============================================================ */
 
 @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap');
 
 :root {
-    --bg-main:        #f5d0d8;
-    --bg-sidebar:     #fdf0f4;
-    --bg-surface:     #ffffff;
-    --bg-card:        #fce4ec;
+    --bg-main:        #141014;
+    --bg-sidebar:     #1b151b;
+    --bg-surface:     #231b23;
+    --bg-input:       #2a212a;
+    --bg-card:        #2e232e;
 
-    --primary:        #c2185b;
-    --primary-hover:  #ad1457;
-    --primary-light:  #f8bbd0;
-    --accent:         #e91e8c;
+    --primary:        #e58fb0;   /* soft rose */
+    --primary-hover:  #f0a3c0;
+    --primary-deep:   #b8587f;
+    --on-primary:     #1a0f16;   /* dark text on rose buttons */
 
-    --border:         #f48fb1;
-    --border-light:   #fce4ec;
+    --border:         #4a3646;
+    --border-focus:   #e58fb0;
 
-    --text-main:      #3d1c2a;
-    --text-muted:     #7b4a5e;
-    --text-heading:   #880e4f;
+    --text-main:      #f1e6ec;
+    --text-muted:     #b9a3b0;
+    --text-heading:   #f6bfd3;
 
-    --chat-user-bg:   #fce4ec;
-    --chat-asst-bg:   #ffffff;
-
-    --success:        #c8e6c9;
-    --warning:        #fff3e0;
-    --error:          #ffebee;
-
-    --radius:         14px;
-    --radius-sm:      8px;
-    --shadow:         0 2px 12px rgba(194,24,91,0.10);
-    --shadow-hover:   0 6px 24px rgba(194,24,91,0.18);
-    --transition:     all 0.22s ease;
+    --radius:         12px;
+    --radius-sm:      10px;
+    --shadow:         0 2px 10px rgba(0,0,0,0.35);
+    --transition:     all 0.18s ease;
 }
 
 /* ── Base ── */
-body,
-.stApp,
+body, .stApp,
 [data-testid="stAppViewContainer"],
 [data-testid="stHeader"],
 [data-testid="stBottom"],
 [data-testid="stBottomBlockContainer"] {
     background-color: var(--bg-main) !important;
-    font-family: 'Nunito', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+    font-family: 'Nunito', 'Segoe UI', sans-serif !important;
+    color: var(--text-main) !important;
 }
 
-/* ── Sidebar ── */
-[data-testid="stSidebar"],
-[data-testid="stSidebarNav"] {
+header[data-testid="stHeader"] { background: transparent !important; }
+
+[data-testid="stSidebar"], [data-testid="stSidebarNav"] {
     background-color: var(--bg-sidebar) !important;
-    border-right: 1px solid var(--border-light) !important;
+    border-right: 1px solid var(--border) !important;
 }
 
-/* ── Header / Toolbar ── */
-header[data-testid="stHeader"] {
-    background: transparent !important;
-}
-
-/* ── Block container ── */
 .block-container {
     padding-top: 2rem !important;
     padding-bottom: 4rem !important;
@@ -71,254 +58,245 @@ h1, h2, h3, h4, h5, h6 {
     color: var(--text-heading) !important;
     font-family: 'Nunito', sans-serif !important;
     font-weight: 800 !important;
-    letter-spacing: -0.3px;
+    letter-spacing: -0.2px;
 }
 
-p, span, label, div {
+p, li, label, .stMarkdown, [data-testid="stMarkdownContainer"] {
     color: var(--text-main) !important;
 }
 
 .app-title {
-    font-size: 2rem;
-    font-weight: 800;
+    font-size: 2rem; font-weight: 800;
     color: var(--text-heading) !important;
     margin: 0 0 0.15rem 0;
 }
-
 .app-subtitle {
     font-size: 1rem;
     color: var(--text-muted) !important;
     margin: 0 0 1.5rem 0;
 }
 
-/* ── Buttons ── */
-.stButton > button {
-    background-color: var(--primary-light) !important;
-    color: var(--primary) !important;
-    border: 1.5px solid var(--border) !important;
+a { color: var(--primary) !important; }
+
+/* ── Buttons: solid rose, dark readable text ── */
+.stButton > button,
+[data-testid="stBaseButton-secondary"],
+[data-testid="stBaseButton-primary"] {
+    background-color: var(--primary) !important;
+    border: none !important;
     border-radius: var(--radius) !important;
-    font-weight: 700 !important;
     font-family: 'Nunito', sans-serif !important;
     transition: var(--transition) !important;
     box-shadow: var(--shadow);
+    padding: 0.55rem 1rem !important;
+    min-height: 2.6rem;
+    height: auto !important;
+    white-space: nowrap !important;
+    line-height: 1.3 !important;
 }
 
-.stButton > button:hover {
-    background-color: var(--primary) !important;
-    color: #fff !important;
-    border-color: var(--primary) !important;
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-hover);
+.stButton > button p,
+[data-testid="stBaseButton-secondary"] p {
+    white-space: nowrap !important;
+    margin: 0 !important;
 }
 
-/* Primary variant */
-.stButton > button[kind="primary"] {
-    background-color: var(--primary) !important;
-    color: #fff !important;
-    border-color: var(--primary) !important;
+/* long example-question buttons in the sidebar may wrap */
+[data-testid="stSidebar"] .stButton > button,
+[data-testid="stSidebar"] .stButton > button p {
+    white-space: normal !important;
 }
 
-.stButton > button[kind="primary"]:hover {
+/* force visible text inside every button element */
+.stButton > button *,
+[data-testid="stBaseButton-secondary"] *,
+[data-testid="stBaseButton-primary"] * {
+    color: var(--on-primary) !important;
+    font-weight: 700 !important;
+    font-size: 0.92rem !important;
+}
+
+.stButton > button:hover,
+[data-testid="stBaseButton-secondary"]:hover,
+[data-testid="stBaseButton-primary"]:hover {
     background-color: var(--primary-hover) !important;
-    color: #fff !important;
+    transform: translateY(-1px);
+}
+
+.stButton > button:active { transform: translateY(0); }
+
+.stButton > button:focus-visible {
+    outline: 2px solid var(--text-heading) !important;
+    outline-offset: 2px;
 }
 
 /* ── Text inputs ── */
-.stTextInput > div > div > input,
-.stTextArea > div > div > textarea {
-    background-color: var(--bg-surface) !important;
-    border: 1.5px solid var(--border) !important;
-    border-radius: var(--radius-sm) !important;
+.stTextInput input,
+.stTextArea textarea,
+[data-baseweb="input"],
+[data-baseweb="base-input"] {
+    background-color: var(--bg-input) !important;
     color: var(--text-main) !important;
+    -webkit-text-fill-color: var(--text-main) !important;
     caret-color: var(--primary) !important;
     font-family: 'Nunito', sans-serif !important;
+    border-radius: var(--radius-sm) !important;
+}
+
+[data-baseweb="input"], [data-baseweb="textarea"] {
+    border: 1.5px solid var(--border) !important;
     transition: var(--transition) !important;
 }
 
-.stTextInput > div > div > input:focus,
-.stTextArea > div > div > textarea:focus {
-    border-color: var(--primary) !important;
-    box-shadow: 0 0 0 3px rgba(194,24,91,0.12) !important;
+[data-baseweb="input"]:focus-within,
+[data-baseweb="textarea"]:focus-within {
+    border-color: var(--border-focus) !important;
+    box-shadow: 0 0 0 3px rgba(229,143,176,0.18) !important;
 }
+
+input::placeholder, textarea::placeholder {
+    color: var(--text-muted) !important;
+    -webkit-text-fill-color: var(--text-muted) !important;
+    opacity: 0.8 !important;
+}
+
+/* password reveal icon */
+[data-baseweb="input"] button { background: transparent !important; box-shadow: none !important; }
+[data-baseweb="input"] button svg { fill: var(--text-muted) !important; }
 
 /* ── File uploader ── */
-/* Style only the outer wrapper and label — do NOT target section/button/input
-   internals, as Streamlit's DOM structure causes double-rendering bugs. */
-[data-testid="stFileUploader"] {
-    background-color: transparent !important;
-}
+[data-testid="stFileUploader"] { background-color: transparent !important; }
 
-/* Label text ("📄 Your Document") */
 [data-testid="stFileUploader"] [data-testid="stWidgetLabel"] p {
-    font-size: 1rem !important;
-    font-weight: 700 !important;
+    font-size: 1rem !important; font-weight: 700 !important;
     color: var(--text-heading) !important;
-    font-family: 'Nunito', sans-serif !important;
 }
 
-/* Drop-zone container */
 [data-testid="stFileUploaderDropzone"] {
-    background-color: var(--bg-surface) !important;
+    background-color: var(--bg-input) !important;
     border: 2px dashed var(--border) !important;
     border-radius: var(--radius) !important;
     transition: var(--transition) !important;
 }
-
 [data-testid="stFileUploaderDropzone"]:hover {
     border-color: var(--primary) !important;
     background-color: var(--bg-card) !important;
 }
+[data-testid="stFileUploaderDropzone"] span,
+[data-testid="stFileUploaderDropzone"] small,
+[data-testid="stFileUploaderDropzone"] div {
+    color: var(--text-muted) !important;
+}
+[data-testid="stFileUploaderDropzone"] svg { fill: var(--primary) !important; }
+
+/* uploaded file chip */
+[data-testid="stFileUploaderFile"] * { color: var(--text-main) !important; }
 
 /* ── Chat messages ── */
 [data-testid="stChatMessage"] {
     background-color: var(--bg-surface) !important;
-    border: 1px solid var(--border-light) !important;
+    border: 1px solid var(--border) !important;
     border-radius: var(--radius) !important;
     margin-bottom: 0.6rem;
     box-shadow: var(--shadow);
 }
-
-/* User messages get a pink tint */
-[data-testid="stChatMessage"][data-testid*="user"],
 .stChatMessage:has([data-testid="chatAvatarIcon-user"]) {
-    background-color: var(--chat-user-bg) !important;
+    background-color: var(--bg-card) !important;
 }
 
 /* ── Chat input ── */
-[data-testid="stChatInput"] {
-    padding-bottom: 1.5rem !important;
-}
+[data-testid="stChatInput"] { padding-bottom: 1.2rem !important; }
 
-.stChatInput > div > div > div > div {
-    background-color: var(--bg-surface) !important;
-    border: 2px solid var(--border) !important;
+[data-testid="stChatInput"] > div,
+.stChatInput > div {
+    background-color: var(--bg-input) !important;
+    border: 1.5px solid var(--border) !important;
     border-radius: var(--radius) !important;
     transition: var(--transition) !important;
 }
-
-.stChatInput > div > div > div > div:focus-within {
-    border-color: var(--primary) !important;
-    box-shadow: 0 0 0 3px rgba(194,24,91,0.12) !important;
+[data-testid="stChatInput"] > div:focus-within,
+.stChatInput > div:focus-within {
+    border-color: var(--border-focus) !important;
+    box-shadow: 0 0 0 3px rgba(229,143,176,0.18) !important;
 }
 
-/* Chat input textarea — text, caret and placeholder */
-.stChatInput textarea,
 [data-testid="stChatInput"] textarea,
-[data-testid="stChatInputTextArea"],
-[data-testid="stChatInputTextArea"] textarea {
+[data-testid="stChatInputTextArea"] {
+    background-color: transparent !important;
     color: var(--text-main) !important;
+    -webkit-text-fill-color: var(--text-main) !important;
     caret-color: var(--primary) !important;
     font-family: 'Nunito', sans-serif !important;
-    background-color: var(--bg-surface) !important;
 }
 
-.stChatInput textarea::placeholder,
-[data-testid="stChatInput"] textarea::placeholder,
-[data-testid="stChatInputTextArea"]::placeholder {
-    color: var(--text-muted) !important;
-    opacity: 1 !important;
+/* send button */
+[data-testid="stChatInputSubmitButton"] {
+    background-color: var(--primary) !important;
+    border-radius: 8px !important;
 }
+[data-testid="stChatInputSubmitButton"] svg { fill: var(--on-primary) !important; color: var(--on-primary) !important; }
 
 /* ── Spinner ── */
-.stSpinner > div {
-    border-top-color: var(--primary) !important;
-}
+.stSpinner > div { border-top-color: var(--primary) !important; }
 
-/* ── Alerts / info boxes ── */
-.stSuccess {
-    background-color: var(--success) !important;
+/* ── Alerts ── */
+[data-testid="stAlert"] {
     border-radius: var(--radius-sm) !important;
-}
-
-.stError {
-    background-color: var(--error) !important;
-    border-radius: var(--radius-sm) !important;
-}
-
-.stInfo {
     background-color: var(--bg-card) !important;
-    border-left: 4px solid var(--primary) !important;
-    border-radius: var(--radius-sm) !important;
+    border: 1px solid var(--border) !important;
 }
-
-.stWarning {
-    background-color: var(--warning) !important;
-    border-radius: var(--radius-sm) !important;
-}
+[data-testid="stAlert"] * { color: var(--text-main) !important; }
 
 /* ── Divider ── */
-hr {
-    border-color: var(--border-light) !important;
-    margin: 1rem 0 !important;
-}
+hr { border-color: var(--border) !important; margin: 1rem 0 !important; }
 
-/* ── Markdown in results ── */
-.stMarkdown {
-    color: var(--text-main) !important;
-}
+/* ── Tables ── */
+.stMarkdown table { border-collapse: collapse; width: 100%; }
+.stMarkdown th, .stMarkdown td { border: 1px solid var(--border); padding: 7px 12px; }
+.stMarkdown th { background-color: var(--bg-card); color: var(--text-heading) !important; font-weight: 700; }
 
-.stMarkdown table {
-    border-collapse: collapse;
-    width: 100%;
-}
-
-.stMarkdown th,
-.stMarkdown td {
-    border: 1px solid var(--border);
-    padding: 7px 12px;
-}
-
-.stMarkdown th {
-    background-color: var(--bg-card);
+.stMarkdown code {
+    background-color: var(--bg-card) !important;
     color: var(--text-heading) !important;
-    font-weight: 700;
+    border-radius: 6px;
 }
+pre { background-color: var(--bg-input) !important; border: 1px solid var(--border); border-radius: var(--radius-sm); }
 
 /* ── Expander ── */
-.streamlit-expanderHeader {
-    background-color: var(--bg-card) !important;
+[data-testid="stExpander"] {
+    background-color: var(--bg-surface) !important;
+    border: 1px solid var(--border) !important;
     border-radius: var(--radius-sm) !important;
-    font-weight: 700 !important;
-    color: var(--text-heading) !important;
 }
+[data-testid="stExpander"] summary { color: var(--text-heading) !important; font-weight: 700 !important; }
 
 /* ── Selectbox ── */
 .stSelectbox div[data-baseweb="select"] > div {
-    background-color: var(--bg-surface) !important;
+    background-color: var(--bg-input) !important;
     border: 1.5px solid var(--border) !important;
     border-radius: var(--radius-sm) !important;
     color: var(--text-main) !important;
 }
 
-/* ── Sidebar labels ── */
-.stTextInput label,
-.stFileUploader label,
-.stSelectbox label {
+/* ── Labels & captions ── */
+.stTextInput label, .stFileUploader label, .stSelectbox label {
     color: var(--text-heading) !important;
     font-weight: 600 !important;
 }
-
-/* ── Caption ── */
-.stCaption {
+.stCaption, [data-testid="stCaptionContainer"] {
     color: var(--text-muted) !important;
     font-size: 0.8rem !important;
 }
 
 /* ── Key status badge ── */
 .key-badge {
-    display: inline-block;
-    padding: 3px 10px;
-    border-radius: 20px;
-    font-size: 0.78rem;
-    font-weight: 700;
+    display: inline-block; padding: 3px 10px;
+    border-radius: 20px; font-size: 0.78rem; font-weight: 700;
 }
+.key-badge.active { background: #25402f; color: #a8e0b8; }
+.key-badge.user   { background: #4a2a3b; color: var(--text-heading); }
 
-.key-badge.active {
-    background: #c8e6c9;
-    color: #2e7d32;
-}
-
-.key-badge.user {
-    background: var(--primary-light);
-    color: var(--primary);
-}
+/* scrollbars */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 8px; }
+::-webkit-scrollbar-track { background: var(--bg-main); }

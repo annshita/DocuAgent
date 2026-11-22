@@ -17,6 +17,7 @@ from dotenv import load_dotenv
 
 # PDF extraction
 try:
+    # pyrefly: ignore[missing-import]
     from pypdf import PdfReader
     _PYPDF_AVAILABLE = True
 except ImportError:
@@ -474,7 +475,7 @@ _env_api_key = os.getenv("GOOGLE_API_KEY", "").strip()
 # ---------------------------------------------------------------------------
 # Header row
 # ---------------------------------------------------------------------------
-col_title, col_btn = st.columns([5, 1])
+col_title, col_btn = st.columns([3, 1])
 with col_title:
     st.markdown(
         '<h1 class="app-title">🎀 DocuAgent</h1>'
