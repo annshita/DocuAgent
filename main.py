@@ -37,7 +37,8 @@ load_dotenv()
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-MAX_UPLOAD_BYTES   = 10 * 1024 * 1024          # 10 MB hard limit
+MAX_UPLOAD_MB      = 200                       # keep in sync with .streamlit/config.toml
+MAX_UPLOAD_BYTES   = MAX_UPLOAD_MB * 1024 * 1024
 ALLOWED_EXTENSIONS = ["txt", "pdf", "md", "csv", "json", "yaml", "yml", "docx"]
 PRIMARY_MODEL      = "gemini-3.6-flash"        # latest stable model
 FALLBACK_MODEL     = "gemini-1.5-flash"
@@ -219,46 +220,6 @@ def _get_safe_file_content(filepath: str) -> tuple[str, bool]:
 # ---------------------------------------------------------------------------
 # MCP agent
 # ---------------------------------------------------------------------------
-
-
-async def run_mcp_agent(local_dir: str, query: str, api_key: str, filename: str = "") -> tuple[str, bool]:
-    """
-    Run the MCP filesystem agent.
-
-    Strategy to stay within free-tier limits:
-    - Pre-read the file locally and inject a safe-sized excerpt into the
-      system prompt instead of relying on the MCP `read_file` tool for
-      the full content. This caps the input tokens per request.
-    - On a 429 rate-limit response, wait for the API-specified retry delay
-      and retry once automatically.
-
-    Args:
-        local_dir:  Temp directory the MCP server is rooted at.
-        query:      User's question.
-        api_key:    Google AI Studio API key.
-        filename:   Name of the uploaded file (so the agent reads it directly).
-
-    Returns:
-        (response_text, quota_exceeded)
-    """
-    abs_dir = os.path.abspath(local_dir)
-    file_hint = f"/{filename}" if filename else ""
-
-    # Pre-load file content locally so we can cap token usage
-    file_content = ""
-    truncation_note = ""
-    if filename:
-        filepath = os.path.join(abs_dir, filename)
-        if os.path.isfile(filepath):
-            file_content, was_truncated = _get_safe_file_content(filepath)
-            if was_truncated:
-                truncation_note = (
-                    f"\n\n> **Note:** The document is large; showing the first "
-                    f"{MAX_CHARS_PER_REQUEST // 1000}K characters. "
-                    "If your question targets content later in the document, "
-                    "please be more specific or split the file."
-                )
-
 
 
 async def _execute_agent_logic(
@@ -537,7 +498,7 @@ with st.sidebar:
     uploaded_file = st.file_uploader(
         "📄 Your Document",
         type=ALLOWED_EXTENSIONS,
-        help=f"Supported: {', '.join(ALLOWED_EXTENSIONS)}. Max 10 MB.",
+        help=f"Supported: {', '.join(ALLOWED_EXTENSIONS)}. Max {MAX_UPLOAD_MB} MB.",
     )
 
     if uploaded_file is not None:
@@ -545,7 +506,7 @@ with st.sidebar:
         if len(file_bytes) > MAX_UPLOAD_BYTES:
             st.error(
                 f"File too large ({len(file_bytes) / 1_048_576:.1f} MB). "
-                "Please upload a file under 10 MB."
+                f"Please upload a file under {MAX_UPLOAD_MB} MB."
             )
         else:
             if uploaded_file.name != st.session_state.uploaded_filename:
